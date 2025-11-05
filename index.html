@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exquisite Corpse</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 sm:p-8">
+
+    <div id="app-container" class="max-w-4xl mx-auto space-y-8">
+        <header class="text-center border-b border-gray-700 pb-4">
+            <h1 class="text-4xl font-bold text-yellow-300">Exquisite Corpse</h1>
+            <p id="user-display" class="text-sm mt-2 text-gray-400"></p>
+        </header>
+
+        <!-- Loading & Status -->
+        <div id="status-message" class="text-center p-4 bg-gray-800 rounded-lg hidden">Loading game data...</div>
+
+        <!-- Submission Form -->
+        <div id="contribution-section" class="bg-gray-800 p-6 rounded-xl shadow-2xl space-y-4">
+            <h2 class="text-xl font-semibold text-gray-200">Your Contribution</h2>
+
+            <div id="last-words-container" class="p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                <p class="text-sm font-medium text-gray-400 mb-2">The story ends with:</p>
+                <div id="last-words" class="text-lg font-bold text-white italic">...Starting the adventure.</div>
+            </div>
+
+            <textarea id="contribution-input" rows="5" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 text-white placeholder-gray-400 resize-none" placeholder="Write your segment, starting where the last one left off..."></textarea>
+
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button id="submit-button" class="flex-grow py-3 px-6 rounded-lg font-semibold bg-yellow-500 text-gray-900 hover:bg-yellow-400 transition duration-150 shadow-lg shadow-yellow-500/30 disabled:opacity-50" disabled>
+                    Submit Segment
+                </button>
+            </div>
+            
+        </div>
+        
+        <!-- Full Story Display -->
+        <div id="story-display-section" class="bg-gray-800 p-6 rounded-xl shadow-2xl space-y-4 hidden">
+            <h2 class="text-2xl font-bold text-yellow-300">The Completed Corpse</h2>
+            <div id="full-story" class="text-lg leading-relaxed text-gray-300 p-4 border-l-4 border-yellow-500 bg-gray-900 rounded-lg whitespace-pre-wrap">
+                <!-- Story segments will be inserted here -->
+            </div>
+            <p class="text-sm text-center text-gray-500 mt-4">Start a new game below to continue the fun.</p>
+        </div>
+
+        <!-- Admin Controls -->
+        <div id="admin-controls" class="text-center p-6 border-t border-gray-700">
+            <h3 class="text-xl font-semibold text-gray-200 mb-4">Game Host Controls</h3>
+
+            <div id="host-unlock-section" class="mb-6 space-y-3 p-4 bg-gray-900 rounded-lg">
+                <input type="password" id="host-password-input" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-red-500 focus:border-red-500 text-white placeholder-gray-400" placeholder="Enter Host Password to Unlock">
+                <button id="unlock-button" class="w-full py-2 px-6 rounded-lg font-semibold bg-red-800 text-white hover:bg-red-700 transition duration-150">
+                    Unlock Host Controls
+                </button>
+                <p id="host-status-message" class="text-sm text-red-400 hidden">Incorrect Password.</p>
+            </div>
+
+            <div id="control-buttons" class="space-y-4 hidden">
+                <button id="new-game-button" class="py-3 px-6 rounded-lg font-semibold bg-green-600 text-white hover:bg-green-500 transition duration-150 shadow-lg shadow-green-600/30">
+                    Start New Story
+                </button>
+                <button id="finish-button" class="w-full py-3 px-6 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-500 transition duration-150 disabled:opacity-50">
+                    Finish Story
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set Firebase Log Level to Debug
+        setLogLevel('Debug');
+
+        // --- Firebase Configuration ---
+        // // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCygQkzm9oIeh2hCD2qB2x6kbt7GO_es4c",
+  authDomain: "the-exquisite-corpse.firebaseapp.com",
+  projectId: "the-exquisite-corpse",
+  storageBucket: "the-exquisite-corpse.firebasestorage.app",
+  messagingSenderId: "311358009295",
+  appId: "1:311358009295:web:a26c690e82a4002a926cba",
+  measurementId: "G-Y43EC1XWPB"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+        // Get this object from your Firebase Project Settings -> Your Apps -> Config/SDK setup.
+        // const firebaseConfig = {
+        //   apiKey: "...",
+        //   authDomain: "...",
+        //   projectId: "...",
+        //   ...
+        // };
+        const firebaseConfig = undefined; // Initialize with undefined to trigger the error below
+
+        if (typeof firebaseConfig === 'undefined' || Object.keys(firebaseConfig).length === 0) {
+            console.error("Firebase config is missing. Please paste it in wix_embed.html");
+            document.getElementById('status-message').textContent = "Error: Firebase configuration is missing. Please review the instructions to add it.";
+            document.getElementById('status-message').classList.remove('hidden');
+            // Exit early if config is missing to prevent runtime errors
+            throw new Error("Missing Firebase Configuration.");
+        }
+
+        // --- Host Configuration ---
+        const HOST_PASSWORD = "corpse"; // You can change this password
+        // --------------------------
+
+        let db;
+        let auth;
+        let userId = 'loading'; // Will be set after auth
+        let isHost = false; // Tracks host authentication state
+        let currentGameState = null; // Stores the latest game data
+
+        
+        // DOM Elements
+        const statusMessageEl = document.getElementById('status-message');
+        const userDisplayEl = document.getElementById('user-display');
+        const lastWordsEl = document.getElementById('last-words');
+        const contributionInputEl = document.getElementById('contribution-input');
+        const submitButtonEl = document.getElementById('submit-button');
+        const finishButtonEl = document.getElementById('finish-button');
+        const newGameButtonEl = document.getElementById('new-game-button');
+        const contributionSectionEl = document.getElementById('contribution-section');
+        const storyDisplaySectionEl = document.getElementById('story-display-section');
+        const fullStoryEl = document.getElementById('full-story');
+        const passwordInputEl = document.getElementById('host-password-input');
+        const unlockButtonEl = document.getElementById('unlock-button');
+        const hostStatusMessageEl = document.getElementById('host-status-message');
+        const controlButtonsEl = document.getElementById('control-buttons');
+        const hostUnlockSectionEl = document.getElementById('host-unlock-section');
+
+
+        // Game Configuration
+        // This path is now simplified for your own Firebase project
+        const GAME_DOC_PATH = `/exquisiteCorpse/game_state`;
+        const LAST_WORDS_COUNT = 1; // Only show the last word
+
+        // --- Utility Functions ---
+
+        /**
+         * Extracts the last N words from a string.
+         * @param {string} text 
+         * @returns {string} The last N words, or the full text if shorter.
+         */
+        function getLastWords(text) {
+            // Basic cleanup: remove newlines and extra spaces
+            const cleanedText = text.replace(/[\r\n]+/g, ' ').trim();
+            if (!cleanedText) return "";
+
+            // Split by word boundary (space, punctuation followed by space, etc.)
+            const words = cleanedText.split(/\s+/).filter(w => w.length > 0);
+            
+            // Get the last N words
+            let lastWords = words.slice(-LAST_WORDS_COUNT).join(' ');
+            
+            // Strip trailing punctuation from the visible word(s) for a cleaner clue
+            // Matches .,:;!? at the end of the string
+            lastWords = lastWords.replace(/[\.,:;!?]+$/, '');
+
+            return lastWords;
+        }
+
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeFirebase() {
+            // Only proceed if firebaseConfig exists and is not empty (checked above with throw)
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // On a public site, we will always sign in anonymously.
+                await signInAnonymously(auth);
+
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                userDisplayEl.textContent = `User ID: ${userId}`;
+                
+                startRealtimeListener();
+
+            } catch (error) {
+                console.error("Firebase initialization or authentication failed:", error);
+                statusMessageEl.textContent = "Error connecting to the game server. Check console for details.";
+                statusMessageEl.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Toggles the visibility and state of the host controls.
+         */
+        function renderHostControls() {
+            const segments = currentGameState?.segments || [];
+            const status = currentGameState?.status || 'playing';
+
+            if (isHost) {
+                hostUnlockSectionEl.classList.add('hidden');
+                controlButtonsEl.classList.remove('hidden');
+                
+                // Host can finish the story only if there's content and it's not already finished
+                finishButtonEl.disabled = segments.length === 0 || status === 'finished';
+            } else {
+                hostUnlockSectionEl.classList.remove('hidden');
+                controlButtonsEl.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Attempts to unlock host privileges with the entered password.
+         */
+        function attemptHostUnlock() {
+            const enteredPassword = passwordInputEl.value;
+            if (enteredPassword === HOST_PASSWORD) {
+                isHost = true;
+                hostStatusMessageEl.classList.add('hidden');
+                renderHostControls();
+                console.log("Host controls unlocked.");
+            } else {
+                isHost = false;
+                hostStatusMessageEl.textContent = "Incorrect Password. Try again.";
+                hostStatusMessageEl.classList.remove('hidden');
+                passwordInputEl.value = ''; // Clear failed attempt
+                renderHostControls();
+            }
+        }
+        
+        /**
+         * Renders the game state to the UI.
+         * @param {object} gameState - The current game state object from Firestore.
+         */
+        function renderGame(gameState) {
+            statusMessageEl.classList.add('hidden');
+            currentGameState = gameState; // Store global state
+            
+            const segments = gameState?.segments || [];
+            const status = gameState?.status || 'playing';
+            
+            
+            // 1. Check if the story is finished
+            if (status === 'finished') {
+                const fullText = segments.map(s => s.text.trim()).join(' ');
+                fullStoryEl.textContent = fullText;
+                contributionSectionEl.classList.add('hidden');
+                storyDisplaySectionEl.classList.remove('hidden');
+                submitButtonEl.disabled = true;
+                
+                // Host controls will be disabled via renderHostControls if status is 'finished'
+                renderHostControls();
+                return;
+            }
+
+            // 2. If playing, show the contribution section and hide the full story
+            contributionSectionEl.classList.remove('hidden');
+            storyDisplaySectionEl.classList.add('hidden');
+
+            
+            // 3. Determine and set the default visible words (last word)
+            let defaultLastWordText;
+            
+            if (segments.length === 0) {
+                defaultLastWordText = "The story is about to begin. Write the first sentence!";
+            } else {
+                const lastSegment = segments[segments.length - 1];
+                const visibleWords = getLastWords(lastSegment.text);
+                defaultLastWordText = visibleWords.length > 0 ? `... ${visibleWords}` : '... (No clear ending word)';
+            }
+            
+            // Always show the last words clue when playing (Fixes user issue #1)
+            lastWordsEl.textContent = defaultLastWordText;
+
+            // 4. Handle input/button disabling for continuous contribution (Fixes user issue #2)
+            const inputHasText = contributionInputEl.value.trim().length > 0;
+
+            if (status === 'playing') {
+                contributionInputEl.disabled = false;
+                // Button is disabled only if the input is empty 
+                submitButtonEl.disabled = !inputHasText;
+            } else {
+                 // Story is finished
+                submitButtonEl.disabled = true;
+                contributionInputEl.disabled = true;
+            }
+
+            // 5. Host controls update
+            renderHostControls();
+        }
+
+        /**
+         * Initializes a new game state. This also serves to create the document if missing.
+         */
+        async function handleNewGame() {
+            if (!isHost) { console.warn("Access Denied: Only host can start a new game."); return; }
+
+            console.log("Attempting to start/create a new game document.");
+            const gameRef = doc(db, GAME_DOC_PATH);
+            
+            const initialGameState = {
+                segments: [],
+                status: 'playing',
+                hostId: userId,
+                createdAt: Date.now()
+            };
+
+            try {
+                // Using setDoc ensures the document is created if it doesn't exist
+                await setDoc(gameRef, initialGameState);
+                console.log("New game started/document created successfully.");
+            } catch (error) {
+                console.error("Error starting new game:", error);
+            }
+        }
+
+
+        /**
+         * Attaches the real-time listener to the Firestore game document.
+         */
+        function startRealtimeListener() {
+            if (!db) return;
+
+            const gameRef = doc(db, GAME_DOC_PATH);
+            let attemptedInitialSetup = false; 
+
+            onSnapshot(gameRef, (docSnap) => {
+                const gameState = docSnap.exists() ? docSnap.data() : {};
+                
+                // If the document does not exist and we haven't tried to create it yet, auto-create it.
+                // We automatically enable 'isHost' temporarily to allow the creation, as the security rules allow any signed-in user (even anonymous) to write.
+                if (!docSnap.exists() && !attemptedInitialSetup) {
+                    attemptedInitialSetup = true;
+                    isHost = true; 
+                    handleNewGame(); 
+                    isHost = false; 
+                    return; 
+                }
+                
+                renderGame(gameState);
+            }, (error) => {
+                console.error("Error fetching game state:", error);
+                statusMessageEl.textContent = "Real-time connection lost. Check console for details.";
+                statusMessageEl.classList.remove('hidden');
+            });
+        }
+
+        // --- Event Handlers ---
+
+        /**
+         * Handles the submission of a new segment.
+         */
+        async function handleSubmitSegment() {
+            const newText = contributionInputEl.value.trim();
+            if (!newText) return;
+
+            submitButtonEl.disabled = true;
+            
+            const gameRef = doc(db, GAME_DOC_PATH);
+            
+            try {
+                // 1. Get the current state using a direct read
+                const docSnap = await getDoc(gameRef);
+                const currentDoc = docSnap.exists() ? docSnap.data() : {};
+
+                const currentSegments = currentDoc?.segments || [];
+                const currentStatus = currentDoc?.status || 'playing';
+
+
+                // 2. Prevent contribution if story is finished
+                if (currentStatus === 'finished') {
+                    console.warn("Cannot submit: Story is finished.");
+                    return;
+                }
+                
+                
+                // 3. Construct the new segment
+                const newSegment = {
+                    text: newText,
+                    userId: userId,
+                    timestamp: Date.now()
+                };
+
+                // 4. Update the document by adding the new segment. 
+                // Use setDoc if it's the first segment to ensure document creation.
+                if (currentSegments.length === 0) {
+                    await setDoc(gameRef, {
+                        segments: [newSegment],
+                        status: 'playing',
+                        hostId: userId, // Current user becomes the assumed host if they start the game
+                        createdAt: Date.now()
+                    });
+                } else {
+                    await updateDoc(gameRef, {
+                        segments: [...currentSegments, newSegment],
+                        status: 'playing'
+                    });
+                }
+
+                // Clear input only upon successful submission
+                contributionInputEl.value = '';
+
+            } catch (error) {
+                console.error("Error submitting segment:", error);
+                // Re-enable input/button on error, keeping the text
+                submitButtonEl.disabled = false; 
+            }
+        }
+
+        /**
+         * Handles marking the story as finished.
+         */
+        async function handleFinishStory() {
+            if (!isHost) { console.warn("Access Denied: Only host can finish the story."); return; }
+
+            const gameRef = doc(db, GAME_DOC_PATH);
+            try {
+                await updateDoc(gameRef, {
+                    status: 'finished'
+                });
+                console.log("Story marked as finished.");
+            } catch (error) {
+                console.error("Error finishing story:", error);
+            }
+        }
+
+
+        // --- Attach Listeners ---
+
+        // Listen for input changes to enable/disable the submit button
+        contributionInputEl.addEventListener('input', () => {
+            const inputHasText = contributionInputEl.value.trim().length > 0;
+            
+            // Button is enabled if input has text (the game status is handled by renderGame)
+            submitButtonEl.disabled = !inputHasText;
+        });
+
+        submitButtonEl.addEventListener('click', handleSubmitSegment);
+        newGameButtonEl.addEventListener('click', handleNewGame);
+        finishButtonEl.addEventListener('click', handleFinishStory);
+
+        // Host control listeners
+        unlockButtonEl.addEventListener('click', attemptHostUnlock);
+        passwordInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                attemptHostUnlock();
+            }
+        });
+
+
+        // Start the application
+        initializeFirebase();
+
+    </script>
+</body>
+</html>

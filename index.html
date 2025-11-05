@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -107,18 +107,24 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-        // Get this object from your Firebase Project Settings -> Your Apps -> Config/SDK setup.
-        // const firebaseConfig = {
-        //   apiKey: "...",
-        //   authDomain: "...",
-        //   projectId: "...",
-        //   ...
-        // };
-        const firebaseConfig = undefined; // Initialize with undefined to trigger the error below
 
-        if (typeof firebaseConfig === 'undefined' || Object.keys(firebaseConfig).length === 0) {
+        // You MUST REPLACE the line 'const firebaseConfig = {};' below with your actual configuration code block from Firebase.
+        /*
+        Example Structure (DO NOT COPY THIS! Get YOUR unique keys from Firebase Project Settings):
+        const firebaseConfig = {
+          apiKey: "AIzaSy...",
+          authDomain: "your-project-id.firebaseapp.com",
+          projectId: "your-project-id",
+          storageBucket: "your-project-id.appspot.com",
+          messagingSenderId: "...",
+          appId: "1:..."
+        };
+        */
+        const firebaseConfig = {}; // <--- REPLACE THIS LINE ENTIRELY WITH YOUR FIREBASE CONFIG OBJECT
+
+        if (Object.keys(firebaseConfig).length === 0) {
             console.error("Firebase config is missing. Please paste it in wix_embed.html");
-            document.getElementById('status-message').textContent = "Error: Firebase configuration is missing. Please review the instructions to add it.";
+            document.getElementById('status-message').textContent = "Error: Firebase configuration is missing. Please paste your configuration object into the script block to fix this.";
             document.getElementById('status-message').classList.remove('hidden');
             // Exit early if config is missing to prevent runtime errors
             throw new Error("Missing Firebase Configuration.");
@@ -208,6 +214,30 @@ const analytics = getAnalytics(app);
                 statusMessageEl.classList.remove('hidden');
             }
         }
+        
+        /**
+         * Creates the initial game document if it doesn't exist. This must be allowed for any user in this public setup.
+         */
+        async function createInitialDocument() {
+            console.log("Creating initial game document...");
+            const gameRef = doc(db, GAME_DOC_PATH);
+
+            const initialGameState = {
+                segments: [],
+                status: 'playing',
+                hostId: userId, // The first creator is the default host ID
+                createdAt: Date.now()
+            };
+
+            try {
+                // Using setDoc ensures the document is created if it doesn't exist
+                await setDoc(gameRef, initialGameState);
+                console.log("Initial game document created successfully.");
+            } catch (error) {
+                console.error("Error creating initial document:", error);
+            }
+        }
+
 
         /**
          * Toggles the visibility and state of the host controls.
@@ -233,7 +263,8 @@ const analytics = getAnalytics(app);
          */
         function attemptHostUnlock() {
             const enteredPassword = passwordInputEl.value;
-            if (enteredPassword === HOST_PASSWORD) {
+            // The password is case-sensitive!
+            if (enteredPassword === HOST_PASSWORD) { 
                 isHost = true;
                 hostStatusMessageEl.classList.add('hidden');
                 renderHostControls();
@@ -309,12 +340,12 @@ const analytics = getAnalytics(app);
         }
 
         /**
-         * Initializes a new game state. This also serves to create the document if missing.
+         * Resets the game state (only callable by host, triggered by button).
          */
         async function handleNewGame() {
             if (!isHost) { console.warn("Access Denied: Only host can start a new game."); return; }
 
-            console.log("Attempting to start/create a new game document.");
+            console.log("Attempting to reset to a new game document.");
             const gameRef = doc(db, GAME_DOC_PATH);
             
             const initialGameState = {
@@ -325,7 +356,7 @@ const analytics = getAnalytics(app);
             };
 
             try {
-                // Using setDoc ensures the document is created if it doesn't exist
+                // SetDoc overwrites the existing state, resetting the game
                 await setDoc(gameRef, initialGameState);
                 console.log("New game started/document created successfully.");
             } catch (error) {
@@ -346,13 +377,10 @@ const analytics = getAnalytics(app);
             onSnapshot(gameRef, (docSnap) => {
                 const gameState = docSnap.exists() ? docSnap.data() : {};
                 
-                // If the document does not exist and we haven't tried to create it yet, auto-create it.
-                // We automatically enable 'isHost' temporarily to allow the creation, as the security rules allow any signed-in user (even anonymous) to write.
+                // If the document does not exist, trigger creation by the current user.
                 if (!docSnap.exists() && !attemptedInitialSetup) {
                     attemptedInitialSetup = true;
-                    isHost = true; 
-                    handleNewGame(); 
-                    isHost = false; 
+                    createInitialDocument(); // Create the initial document now
                     return; 
                 }
                 
@@ -401,20 +429,11 @@ const analytics = getAnalytics(app);
                 };
 
                 // 4. Update the document by adding the new segment. 
-                // Use setDoc if it's the first segment to ensure document creation.
-                if (currentSegments.length === 0) {
-                    await setDoc(gameRef, {
-                        segments: [newSegment],
-                        status: 'playing',
-                        hostId: userId, // Current user becomes the assumed host if they start the game
-                        createdAt: Date.now()
-                    });
-                } else {
-                    await updateDoc(gameRef, {
-                        segments: [...currentSegments, newSegment],
-                        status: 'playing'
-                    });
-                }
+                // We use updateDoc because createInitialDocument ensures the document exists.
+                await updateDoc(gameRef, {
+                    segments: [...currentSegments, newSegment],
+                    status: 'playing'
+                });
 
                 // Clear input only upon successful submission
                 contributionInputEl.value = '';

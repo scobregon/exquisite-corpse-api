@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
@@ -86,35 +86,23 @@
         setLogLevel('Debug');
 
         // --- Firebase Configuration ---
-const firebaseConfig = {
-  apiKey: "AIzaSyCygQkzm9oIeh2hCD2qB2x6kbt7GO_es4c",
-  authDomain: "the-exquisite-corpse.firebaseapp.com",
-  projectId: "the-exquisite-corpse",
-  storageBucket: "the-exquisite-corpse.firebasestorage.app",
-  messagingSenderId: "311358009295",
-  appId: "1:311358009295:web:a26c690e82a4002a926cba",
-  measurementId: "G-Y43EC1XWPB"
-};
-
-        // You MUST REPLACE the line 'const firebaseConfig = {};' below with your actual configuration code block from Firebase.
-        /*
-        Example Structure (DO NOT COPY THIS! Get YOUR unique keys from Firebase Project Settings):
+        // Configuration object provided by the user (embedded)
         const firebaseConfig = {
-          apiKey: "AIzaSy...",
-          authDomain: "your-project-id.firebaseapp.com",
-          projectId: "your-project-id",
-          storageBucket: "your-project-id.appspot.com",
-          messagingSenderId: "...",
-          appId: "1:..."
+            apiKey: "AIzaSyCygQkzm9oIeh2hCD2qB2x6kbt7GO_es4c",
+            authDomain: "the-exquisite-corpse.firebaseapp.com",
+            projectId: "the-exquisite-corpse",
+            storageBucket: "the-exquisite-corpse.firebasestorage.app",
+            messagingSenderId: "311358009295",
+            appId: "1:311358009295:web:a26c690e82a4002a926cba",
+            measurementId: "G-Y43EC1XWPB"
         };
-        */
-        const firebaseConfig = {}; // <--- REPLACE THIS LINE ENTIRELY WITH YOUR FIREBASE CONFIG OBJECT
-
+        // --------------------------
+        
+        // This check ensures the configuration is present.
         if (Object.keys(firebaseConfig).length === 0) {
-            console.error("Firebase config is missing. Please paste it in wix_embed.html");
-            document.getElementById('status-message').textContent = "Error: Firebase configuration is missing. Please paste your configuration object into the script block to fix this.";
+            console.error("Firebase config is missing. This check should not be reached as config is embedded.");
+            document.getElementById('status-message').textContent = "Error: Firebase configuration is missing.";
             document.getElementById('status-message').classList.remove('hidden');
-            // Exit early if config is missing to prevent runtime errors
             throw new Error("Missing Firebase Configuration.");
         }
 
@@ -181,7 +169,7 @@ const firebaseConfig = {
          * Initializes Firebase and authenticates the user.
          */
         async function initializeFirebase() {
-            // Only proceed if firebaseConfig exists and is not empty (checked above with throw)
+            // Only proceed if firebaseConfig exists and is not empty
 
             try {
                 const app = initializeApp(firebaseConfig);
@@ -480,4 +468,3 @@ const firebaseConfig = {
     </script>
 </body>
 </html>
-
